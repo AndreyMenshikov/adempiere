@@ -144,6 +144,9 @@ import org.eevolution.form.VBrowser;
  *
  * 	@author hengsin, hengsin.low@idalica.com
  *  @see FR [2887701] https://sourceforge.net/tracker/?func=detail&atid=879335&aid=2887701&group_id=176962
+ *  @author Yamel Senih, ysenih@erpcya.com, ERPCyA http://www.erpcya.com
+ *		<li> FR [ 114 ] Change "Create From" UI for Form like Dialog in window without "hardcode"
+ *		@see https://github.com/adempiere/adempiere/issues/114
  *  @sponsor www.metas.de
  */
 public final class APanel extends CPanel
@@ -2631,6 +2634,15 @@ public final class APanel extends CPanel
 
 		// call form
 		MProcess pr = new MProcess(m_ctx, vButton.getProcess_ID(), null);
+		//	Validate Access
+		MRole role = MRole.getDefault(m_ctx, false);
+		Boolean accessRW = role.checkProcessAccess(pr.getAD_Process_ID());
+		if(accessRW == null
+				|| !accessRW.booleanValue()) {
+			ADialog.error(m_curWindowNo, this, null, Msg.parseTranslation(m_ctx, "@AccessCannotProcess@"));
+			return;
+		}
+		//	
 		int form_ID = pr.getAD_Form_ID();
 		if (form_ID != 0 )
 		{
@@ -2638,8 +2650,8 @@ public final class APanel extends CPanel
 			if (m_curTab.needSave(true, false))
 				if (!cmd_save(true))
 					return;
-
-			FormFrame ff = new FormFrame(getGraphicsConfiguration());
+			//	Yamel Senih FR [ 114 ] 2015-11-23 Add Support to Dialog for create from
+			FormFrame ff = new FormFrame(getWindowNo());
 			String title = vButton.getDescription();
 			if (title == null || title.length() == 0)
 				title = vButton.getName();
@@ -2650,6 +2662,9 @@ public final class APanel extends CPanel
 			ff.openForm(form_ID);
 			ff.pack();
 			AEnv.showCenterScreen(ff);
+			//	Refresh
+			m_curTab.dataRefresh();
+			//	End Yamel Senih
 			return;
 		}
 		int browse_ID = pr.getAD_Browse_ID();
@@ -2728,11 +2743,14 @@ public final class APanel extends CPanel
 			if ( pi.isError() )
 				ADialog.error(m_curWindowNo, this, null, pi.getSummary());
 			//	Get Log Info
-			ProcessInfoUtil.setLogFromDB(pi);
-			String logInfo = pi.getLogInfo();
-			if (logInfo.length() > 0)
-				ADialog.info(m_curWindowNo, this, Env.getHeader(m_ctx, m_curWindowNo),
-					pi.getTitle(), logInfo);	//	 clear text
+			else
+			{
+				ProcessInfoUtil.setLogFromDB(pi);
+				String logInfo = pi.getLogInfo();
+				if (logInfo.length() > 0)
+					ADialog.info(m_curWindowNo, this, Env.getHeader(m_ctx, m_curWindowNo),
+						pi.getTitle(), logInfo);	//	 clear text
+			}
 		}
 		else
 		{
